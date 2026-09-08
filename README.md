@@ -43,7 +43,7 @@ Keeps the frame and progress count, but displays one task row only:
 
 ## Configuration
 
-Display settings are persisted in `~/.pi/agent/todo-write-overlay.json`.
+Display settings are persisted in `~/.pi/todo-write-overlay.json`.
 
 ```json
 {
