@@ -34,7 +34,8 @@
   "pi": {
     "extensions": [
       "./index.ts"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/tallshort/pi-todo-write-overlay/main/assets/todo-overlay-progress.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
