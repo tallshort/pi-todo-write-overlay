@@ -109,7 +109,7 @@ const TODO_SPINNER_INTERVAL_MS = 120;
 const TODO_HIDE_COMPLETED_AFTER_TURNS = 2;
 const TODO_HIDE_COMPLETED_AFTER_MS = 90_000;
 const TODO_STATE_ENTRY_TYPE = "todo-write-overlay-state";
-const TODO_OVERLAY_SETTINGS_FILE = join(homedir(), CONFIG_DIR_NAME, "todo-write-overlay.json");
+const TODO_OVERLAY_SETTINGS_FILE = join(homedir(), CONFIG_DIR_NAME, "agent", "todo-write-overlay.json");
 let todoOverlayDisplayMode: TodoOverlayDisplayMode = "full";
 let todoOverlayTitle: string | undefined = "TODO";
 function createEmptyState(): TodoState {
