@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.6] - 2026-09-08
+
+### Changed
+
+- Refined the package description and normalized the repository URL.
+
 ## [0.3.5] - 2026-09-08
 
 ### Documentation
