@@ -2,12 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.5] - 2026-09-08
+
+### Documentation
+
+- Added the full-mode screenshot as the Pi package gallery preview.
+
 ## [0.3.4] - 2026-09-08
 
 ### Documentation
 
 - Replaced legacy Korean screenshots with English full and compact overlay examples.
-- Added the full-mode screenshot as the Pi package gallery preview.
 
 ## [0.3.3] - 2026-09-08
 
