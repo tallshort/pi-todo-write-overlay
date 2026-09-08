@@ -566,7 +566,7 @@ class TodoOverlayComponent {
 		const totalCount = this.state.tasks.length;
 		const progress = totalCount === 0 ? "0/0" : `${doneCount}/${totalCount}`;
 		const progressText = this.theme.fg("dim", ` ${progress} done `);
-		const title = todoOverlayTitle ? this.theme.fg("accent", this.theme.bold(` ${todoOverlayTitle} `)) : "";
+		const title = todoOverlayTitle ? this.theme.fg("dim", this.theme.bold(` ${todoOverlayTitle} `)) : "";
 		const titleWidth = visibleWidth(title) + visibleWidth(progressText);
 		const titlePad = Math.max(0, innerWidth - titleWidth);
 		const lines = [`${border("╭")}${title}${border("─".repeat(titlePad))}${progressText}${border("╮")}`];
