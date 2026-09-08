@@ -127,8 +127,12 @@ async function loadTodoOverlaySettings(): Promise<TodoOverlaySettings> {
 			displayMode: isTodoOverlayDisplayMode(settings.displayMode) ? settings.displayMode : "full",
 			title: typeof settings.title === "string" && settings.title.trim() ? settings.title : undefined,
 		};
-	} catch {
-		return { displayMode: "full", title: "TODO" };
+	} catch (error) {
+		const settings = { displayMode: "full" as const, title: "TODO" };
+		if (typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT") {
+			await persistTodoOverlayDisplayMode(settings.displayMode);
+		}
+		return settings;
 	}
 }
 

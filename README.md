@@ -52,7 +52,7 @@ Display settings are persisted in `~/.pi/agent/todo-write-overlay.json`.
 }
 ```
 
-- Without a settings file, the default title is `TODO`.
+- On first startup, the extension creates this file with the default title `TODO`.
 - If an existing settings file omits `title`, or sets it to an empty string, the full-mode frame has no title.
 - `full` and `compact` persist the selected display mode; `hide` only hides the overlay.
 
