@@ -14,6 +14,10 @@ All notable changes to this project are documented in this file.
 - Persist the default overlay title.
 - Store overlay settings in Pi's agent configuration directory.
 
+### Documentation
+
+- Replaced legacy Korean screenshots with English full and compact overlay examples.
+
 ### Changed
 
 - Render the overlay title with dim styling.

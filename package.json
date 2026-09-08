@@ -21,9 +21,10 @@
   "files": [
     "index.ts",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
-    "assets/todo-overlay-chat.png",
-    "assets/todo-overlay-progress.png"
+    "assets/todo-overlay-progress.png",
+    "assets/todo-overlay-progress-compact.png"
   ],
   "scripts": {
     "build": "npm run typecheck",

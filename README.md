@@ -4,9 +4,9 @@ A persistent, passive `todo_write` overlay for [pi](https://github.com/badlogic/
 
 > Forked from [Jonghakseo/pi-extension: packages/todo-write-overlay](https://github.com/Jonghakseo/pi-extension/tree/main/packages/todo-write-overlay). This fork adds zero-margin placement, persistent full/compact display modes, a configurable title, and refined task colours.
 
-![Todo overlay in chat](./assets/todo-overlay-chat.png)
+![Full TODO overlay showing four tasks](./assets/todo-overlay-progress.png)
 
-![Todo overlay progress](./assets/todo-overlay-progress.png)
+![Compact TODO overlay showing the active task](./assets/todo-overlay-progress-compact.png)
 
 ## Installation
 
