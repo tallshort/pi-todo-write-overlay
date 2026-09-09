@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.7] - 2026-09-09
+
+### Added
+
+- Added `/todo-overlay hide-once` to hide the overlay until the next `todo_write` change.
+
 ## [0.3.6] - 2026-09-08
 
 ### Changed
