@@ -47,6 +47,7 @@ describe("todo-write-overlay helpers", () => {
 		expect(parseTodoOverlayCommand(" full ")).toBe("full");
 		expect(parseTodoOverlayCommand("COMPACT")).toBe("compact");
 		expect(parseTodoOverlayCommand("hide")).toBe("hide");
+		expect(parseTodoOverlayCommand("hide-once")).toBe("hide-once");
 		expect(parseTodoOverlayCommand("show")).toBe("invalid");
 	});
 

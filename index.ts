@@ -103,6 +103,7 @@ const todoOverlayStore = new Map<string, TodoOverlayRecord>();
 const todoOverlayMetaStore = new Map<string, { completedAt?: number; completedTurn?: number }>();
 const todoOverlayAgentRunningStore = new Map<string, boolean>();
 const todoOverlayHiddenStore = new Map<string, boolean>();
+const todoOverlayHideOnceStore = new Map<string, string>();
 const todoTurnStore = new Map<string, number>();
 const TODO_SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const TODO_SPINNER_INTERVAL_MS = 120;
@@ -473,12 +474,12 @@ function setTodoOverlayAgentRunning(ctx: Pick<ExtensionContext, "cwd" | "session
 	todoOverlayAgentRunningStore.set(key, running);
 }
 
-export type TodoOverlayCommandAction = "full" | "compact" | "hide" | "status" | "invalid";
+export type TodoOverlayCommandAction = "full" | "compact" | "hide" | "hide-once" | "status" | "invalid";
 
 export function parseTodoOverlayCommand(args: string): TodoOverlayCommandAction {
 	const action = args.trim().toLowerCase();
 	if (action === "") return "status";
-	if (action === "full" || action === "compact" || action === "hide") return action;
+	if (action === "full" || action === "compact" || action === "hide" || action === "hide-once") return action;
 	return "invalid";
 }
 
@@ -488,6 +489,22 @@ function isTodoOverlayHidden(key: string): boolean {
 
 function setTodoOverlayHidden(key: string, hidden: boolean): void {
 	todoOverlayHiddenStore.set(key, hidden);
+}
+
+function todoStateFingerprint(state: TodoState): string {
+	return JSON.stringify(state.tasks);
+}
+
+function hideTodoOverlayOnce(key: string, state: TodoState): void {
+	todoOverlayHideOnceStore.set(key, todoStateFingerprint(state));
+}
+
+function isTodoOverlayHiddenOnce(key: string, state: TodoState): boolean {
+	const hiddenState = todoOverlayHideOnceStore.get(key);
+	if (hiddenState === undefined) return false;
+	if (hiddenState === todoStateFingerprint(state)) return true;
+	todoOverlayHideOnceStore.delete(key);
+	return false;
 }
 
 function hideTodoOverlay(key: string): void {
@@ -701,6 +718,10 @@ async function syncTodoOverlay(ctx: ExtensionContext, pi: Pick<ExtensionAPI, "ap
 		hideTodoOverlay(key);
 		return;
 	}
+	if (isTodoOverlayHiddenOnce(key, state)) {
+		hideTodoOverlay(key);
+		return;
+	}
 
 	showOrUpdateTodoOverlay(ctx, key, state);
 }
@@ -710,9 +731,9 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 	todoOverlayDisplayMode = settings.displayMode;
 	todoOverlayTitle = settings.title;
 	pi.registerCommand("todo-overlay", {
-		description: "Set the todo overlay display. Usage: /todo-overlay full|compact|hide",
+		description: "Set the todo overlay display. Usage: /todo-overlay full|compact|hide|hide-once",
 		getArgumentCompletions(prefix: string) {
-			const filtered = ["full", "compact", "hide"].filter((value) => value.startsWith(prefix.trim().toLowerCase()));
+			const filtered = ["full", "compact", "hide", "hide-once"].filter((value) => value.startsWith(prefix.trim().toLowerCase()));
 			return filtered.length > 0 ? filtered.map((value) => ({ value, label: value })) : null;
 		},
 		async handler(args, ctx) {
@@ -720,12 +741,12 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 			const action = parseTodoOverlayCommand(args);
 
 			if (action === "invalid") {
-				ctx.ui.notify("Usage: /todo-overlay full, compact, or hide", "warning");
+				ctx.ui.notify("Usage: /todo-overlay full, compact, hide, or hide-once", "warning");
 				return;
 			}
 
 			if (action === "status") {
-				ctx.ui.notify(`todo overlay: ${isTodoOverlayHidden(key) ? "hidden" : "shown"}`, "info");
+				ctx.ui.notify(`todo overlay: ${isTodoOverlayHidden(key) || todoOverlayHideOnceStore.has(key) ? "hidden" : "shown"}`, "info");
 				return;
 			}
 
@@ -733,6 +754,7 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 				try {
 					await setTodoOverlayDisplayMode(action);
 					setTodoOverlayHidden(key, false);
+					todoOverlayHideOnceStore.delete(key);
 					await syncTodoOverlay(ctx, pi);
 					ctx.ui.notify(`TODO overlay mode: ${action}`, "info");
 				} catch (error) {
@@ -742,8 +764,17 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 			}
 			if (action === "hide") {
 				setTodoOverlayHidden(key, true);
+				todoOverlayHideOnceStore.delete(key);
 				hideTodoOverlay(key);
 				ctx.ui.notify("Todo overlay hidden. Use /todo-overlay full or /todo-overlay compact to show it again.", "info");
+				return;
+			}
+
+			if (action === "hide-once") {
+				setTodoOverlayHidden(key, false);
+				hideTodoOverlayOnce(key, readTodoWriteState(ctx));
+				hideTodoOverlay(key);
+				ctx.ui.notify("Todo overlay hidden until the next todo_write change.", "info");
 			}
 		},
 	});
@@ -901,6 +932,7 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 		todoOverlayMetaStore.delete(key);
 		todoOverlayAgentRunningStore.delete(key);
 		todoOverlayHiddenStore.delete(key);
+		todoOverlayHideOnceStore.delete(key);
 		todoTurnStore.delete(key);
 	});
 }

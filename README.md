@@ -22,7 +22,7 @@ Do not install this extension together with another extension that registers the
 - Shows a non-capturing overlay anchored at the top-right corner with no margin.
 - Supports persistent `full` and `compact` display modes.
 - Toggles display mode with `Ctrl+Shift+T`.
-- Supports `/todo-overlay full`, `/todo-overlay compact`, and `/todo-overlay hide`.
+- Supports `/todo-overlay full`, `/todo-overlay compact`, `/todo-overlay hide`, and `/todo-overlay hide-once`.
 - Uses an accent-coloured icon with normal output text for in-progress tasks.
 - Uses muted styling for pending tasks.
 - Shows a compact progress counter such as `1/4 done`.
@@ -54,7 +54,7 @@ Display settings are persisted in `~/.pi/agent/todo-write-overlay.json`.
 
 - On first startup, the extension creates this file with the default title `TODO`.
 - If an existing settings file omits `title`, or sets it to an empty string, the full-mode frame has no title.
-- `full` and `compact` persist the selected display mode; `hide` only hides the overlay.
+- `full` and `compact` persist the selected display mode; `hide` keeps the overlay hidden for the current session; `hide-once` restores it when `todo_write` next changes the task list.
 
 ## Commands and shortcut
 
@@ -62,6 +62,7 @@ Display settings are persisted in `~/.pi/agent/todo-write-overlay.json`.
 /todo-overlay full
 /todo-overlay compact
 /todo-overlay hide
+/todo-overlay hide-once
 ```
 
 Use `Ctrl+Shift+T` to toggle between `full` and `compact`.
