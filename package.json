@@ -1,6 +1,6 @@
 {
   "name": "@tallshort/pi-todo-write-overlay",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Persistent top-right todo_write overlay for Pi, with full and compact modes.",
   "license": "MIT",
   "repository": {
@@ -28,7 +28,7 @@
     "LICENSE",
     "assets/todo-overlay-progress.png",
     "assets/todo-overlay-progress-compact.png",
-    "assets/gallery-preview.png"
+    "assets/todo-overlay-handdrawn-preview.png"
   ],
   "scripts": {
     "build": "npm run typecheck",
@@ -39,7 +39,7 @@
     "extensions": [
       "./index.ts"
     ],
-    "image": "https://raw.githubusercontent.com/tallshort/pi-todo-write-overlay/main/assets/gallery-preview.png"
+    "image": "https://raw.githubusercontent.com/tallshort/pi-todo-write-overlay/main/assets/todo-overlay-handdrawn-preview.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
