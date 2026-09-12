@@ -26,12 +26,13 @@ Do not install this extension together with another extension that registers the
 - Uses an accent-coloured icon with normal output text for in-progress tasks.
 - Uses muted styling for pending tasks.
 - Shows a compact progress counter such as `1/4 done`.
+- Shows a dim, indented `notes` line for the in-progress task in full mode when capacity permits.
 
 ## Display modes
 
 ### Full
 
-Shows the title (when configured), progress count, and task rows inside a framed overlay. By default it shows at most eight rows: when completed tasks are folded, their `✓ N completed` summary reserves one row; the active task is retained and pending tasks fill the remaining space.
+Shows the title (when configured), progress count, and task rows inside a framed overlay. By default it shows at most eight rows: when completed tasks are folded, their `✓ N completed` summary reserves one row; the active task is retained, its `notes` line uses one row when present, and pending tasks fill the remaining space.
 
 ### Compact
 
@@ -55,7 +56,7 @@ Display settings are persisted in `~/.pi/agent/todo-write-overlay.json`.
 
 - On first startup, the extension creates this file with the default title `TODO` and `maxVisibleTasks` of `8`.
 - If an existing settings file omits `title`, or sets it to an empty string, the full-mode frame has no title. Set one with `/todo-overlay title "My TODO"` or `/todo-overlay title 'My TODO'`; clear it with `title ""` or `title ''`. Non-empty titles use the active theme accent colour.
-- `maxVisibleTasks` is a positive integer that limits full-mode task rows. When completed tasks are folded, their summary reserves one row; the active task is retained and pending tasks take the remaining rows. Set it in the TUI with `/todo-overlay max-visible <positive integer>`.
+- `maxVisibleTasks` is a positive integer that limits full-mode display rows, including the active task's note. When completed tasks are folded, their summary reserves one row; the active task is retained, its note is next in priority, and pending tasks take the remaining rows. Set it in the TUI with `/todo-overlay max-visible <positive integer>`.
 - `full` and `compact` persist the selected display mode; `hide` keeps the overlay hidden for the current session; `hide-once` restores it when `todo_write` next changes the task list.
 
 ## Commands and shortcut

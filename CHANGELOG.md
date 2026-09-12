@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### Fixed
 
 - Preserved the latest task and agent state when the overlay finishes opening after a `todo_write` update.
+- Kept ellipses added when truncating active-task notes contiguous with the final character and inside the dim note style.
 
 ### Changed
 
@@ -14,6 +15,7 @@ All notable changes to this project are documented in this file.
 - Added the `maxVisibleTasks` setting and `/todo-overlay max-visible <positive integer>` command for overriding the full-mode row limit.
 - Added `/todo-overlay title <text>` for changing the persisted overlay title from the TUI; quoted values are parsed and `title ""` clears it.
 - Rendered non-empty overlay titles with the active theme accent colour.
+- Rendered the active task's notes as a dim, indented full-mode row when the display-row budget permits.
 ### Documentation
 - Added contributor, agent workflow, and roadmap documentation.
 - Added a GitHub Actions CI workflow for tests and type checking.

@@ -153,7 +153,7 @@ describe("todo-write-overlay helpers", () => {
 			{ content: "Completed 2", status: "completed" },
 			{ content: "Completed 3", status: "completed" },
 			{ content: "Completed 4", status: "completed" },
-			{ content: "Active", status: "in_progress" },
+			{ content: "Active", status: "in_progress", notes: "Run focused tests first" },
 			{ content: "Pending 1", status: "pending" },
 			{ content: "Pending 2", status: "pending" },
 			{ content: "Pending 3", status: "pending" },
@@ -170,6 +170,7 @@ describe("todo-write-overlay helpers", () => {
 		expect(rows).toHaveLength(8);
 		expect(rows[0]).toEqual({ kind: "completed-summary", count: 4 });
 		expect(rows[1]).toMatchObject({ kind: "task", task: { content: "Active", status: "in_progress" } });
+		expect(rows[2]).toEqual({ kind: "active-note", note: "Run focused tests first" });
 		expect(rows.filter((row) => row.kind === "task").map((row) => row.task.content)).toEqual([
 			"Active",
 			"Pending 1",
@@ -177,7 +178,6 @@ describe("todo-write-overlay helpers", () => {
 			"Pending 3",
 			"Pending 4",
 			"Pending 5",
-			"Pending 6",
 		]);
 	});
 

@@ -30,6 +30,7 @@ type TodoState = {
 
 export type TodoOverlayRow =
 	| { kind: "task"; task: TodoTask }
+	| { kind: "active-note"; note: string }
 	| { kind: "completed-summary"; count: number };
 
 type TodoOverlayRecord = {
@@ -221,20 +222,31 @@ export function planTodoOverlayRows(
 	maxVisibleTasks = DEFAULT_MAX_VISIBLE_TASKS,
 ): TodoOverlayRow[] {
 	const limit = Math.max(1, Math.floor(maxVisibleTasks));
-	if (state.tasks.length <= limit) return state.tasks.map((task) => ({ kind: "task", task }));
-
 	const active = state.tasks.find((task) => task.status === "in_progress");
+	const activeNote = active?.notes?.trim();
 	const pending = state.tasks.filter((task) => task.status === "pending");
 	const completedCount = state.tasks.filter((task) => task.status === "completed").length;
+	const needsFolding = state.tasks.length + (activeNote ? 1 : 0) > limit;
+
+	if (!needsFolding) {
+		return state.tasks.flatMap((task) => [
+			{ kind: "task" as const, task },
+			...(task === active && activeNote ? [{ kind: "active-note" as const, note: activeNote }] : []),
+		]);
+	}
+
 	const hasRemainingTasks = active !== undefined || pending.length > 0;
 	const summaryVisible = completedCount > 0 && (!hasRemainingTasks || limit > 1);
-	const taskLimit = limit - (summaryVisible ? 1 : 0);
-	const prioritized = [...(active ? [active] : []), ...pending].slice(0, taskLimit);
-
-	return [
-		...(summaryVisible ? [{ kind: "completed-summary" as const, count: completedCount }] : []),
-		...prioritized.map((task) => ({ kind: "task" as const, task })),
-	];
+	const rows: TodoOverlayRow[] = summaryVisible ? [{ kind: "completed-summary", count: completedCount }] : [];
+	if (active && rows.length < limit) {
+		rows.push({ kind: "task", task: active });
+		if (activeNote && rows.length < limit) rows.push({ kind: "active-note", note: activeNote });
+	}
+	for (const task of pending) {
+		if (rows.length >= limit) break;
+		rows.push({ kind: "task", task });
+	}
+	return rows;
 }
 
 function normalizeInProgressTask(tasks: TodoTask[]): void {
@@ -701,13 +713,26 @@ class TodoOverlayComponent {
 				const content =
 					rowItem.kind === "task"
 						? this.renderTaskLine(rowItem.task)
-						: ` ${this.theme.fg("success", "✓")} ${this.theme.fg("dim", `${rowItem.count} completed`)}`;
+						: rowItem.kind === "active-note"
+							? this.renderActiveNote(rowItem.note, innerWidth)
+							: ` ${this.theme.fg("success", "✓")} ${this.theme.fg("dim", `${rowItem.count} completed`)}`;
 				lines.push(row(content));
 			}
 		}
 
 		lines.push(`${border("╰")}${border("─".repeat(innerWidth))}${border("╯")}`);
 		return lines;
+	}
+
+	private renderActiveNote(note: string, innerWidth: number): string {
+		const noteWidth = Math.max(1, innerWidth - 3);
+		if (visibleWidth(note) <= noteWidth) return `   ${this.theme.fg("dim", note)}`;
+
+		const ellipsis = truncateToWidth("...", noteWidth, "", false).replace(/\x1b\[0m$/, "");
+		const clipped = truncateToWidth(note, Math.max(0, noteWidth - visibleWidth(ellipsis)), "", false)
+			.replace(/\x1b\[0m$/, "")
+			.trimEnd();
+		return `   ${this.theme.fg("dim", clipped)}${this.theme.fg("dim", ellipsis)}`;
 	}
 
 	private renderCompactLine(): string {
