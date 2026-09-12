@@ -31,7 +31,7 @@ Do not install this extension together with another extension that registers the
 
 ### Full
 
-Shows the title (when configured), progress count, and every task inside a framed overlay.
+Shows the title (when configured), progress count, and task rows inside a framed overlay. By default it shows at most eight rows: when completed tasks are folded, their `✓ N completed` summary reserves one row; the active task is retained and pending tasks fill the remaining space.
 
 ### Compact
 
@@ -48,12 +48,14 @@ Display settings are persisted in `~/.pi/agent/todo-write-overlay.json`.
 ```json
 {
   "displayMode": "full",
-  "title": "TODO"
+  "title": "TODO",
+  "maxVisibleTasks": 8
 }
 ```
 
-- On first startup, the extension creates this file with the default title `TODO`.
-- If an existing settings file omits `title`, or sets it to an empty string, the full-mode frame has no title.
+- On first startup, the extension creates this file with the default title `TODO` and `maxVisibleTasks` of `8`.
+- If an existing settings file omits `title`, or sets it to an empty string, the full-mode frame has no title. Set one with `/todo-overlay title "My TODO"` or `/todo-overlay title 'My TODO'`; clear it with `title ""` or `title ''`. Non-empty titles use the active theme accent colour.
+- `maxVisibleTasks` is a positive integer that limits full-mode task rows. When completed tasks are folded, their summary reserves one row; the active task is retained and pending tasks take the remaining rows. Set it in the TUI with `/todo-overlay max-visible <positive integer>`.
 - `full` and `compact` persist the selected display mode; `hide` keeps the overlay hidden for the current session; `hide-once` restores it when `todo_write` next changes the task list.
 
 ## Commands and shortcut
@@ -63,6 +65,10 @@ Display settings are persisted in `~/.pi/agent/todo-write-overlay.json`.
 /todo-overlay compact
 /todo-overlay hide
 /todo-overlay hide-once
+/todo-overlay max-visible <positive integer>
+/todo-overlay title "My TODO"
+/todo-overlay title 'My TODO'
+/todo-overlay title ""  # or title ''
 ```
 
 Use `Ctrl+Shift+T` to toggle between `full` and `compact`.

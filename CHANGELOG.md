@@ -4,8 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
-### Documentation
+### Fixed
 
+- Preserved the latest task and agent state when the overlay finishes opening after a `todo_write` update.
+
+### Changed
+
+- Limited full-mode overlays to eight visible task rows by default, preserving the active task and reserving one row for folded completed-task summaries.
+- Added the `maxVisibleTasks` setting and `/todo-overlay max-visible <positive integer>` command for overriding the full-mode row limit.
+- Added `/todo-overlay title <text>` for changing the persisted overlay title from the TUI; quoted values are parsed and `title ""` clears it.
+- Rendered non-empty overlay titles with the active theme accent colour.
+### Documentation
 - Added contributor, agent workflow, and roadmap documentation.
 - Added a GitHub Actions CI workflow for tests and type checking.
 ## [0.3.7] - 2026-09-09

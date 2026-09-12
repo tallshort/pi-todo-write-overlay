@@ -21,14 +21,21 @@ type TodoOverlayDisplayMode = "full" | "compact";
 type TodoOverlaySettings = {
 	displayMode: TodoOverlayDisplayMode;
 	title?: string;
+	maxVisibleTasks: number;
 };
 
 type TodoState = {
 	tasks: TodoTask[];
 };
 
+export type TodoOverlayRow =
+	| { kind: "task"; task: TodoTask }
+	| { kind: "completed-summary"; count: number };
+
 type TodoOverlayRecord = {
 	opening: boolean;
+	pendingState?: TodoState;
+	pendingAgentRunning?: boolean;
 	component?: TodoOverlayComponent;
 	handle?: OverlayHandle;
 	close?: () => void;
@@ -111,8 +118,10 @@ const TODO_HIDE_COMPLETED_AFTER_TURNS = 2;
 const TODO_HIDE_COMPLETED_AFTER_MS = 90_000;
 const TODO_STATE_ENTRY_TYPE = "todo-write-overlay-state";
 const TODO_OVERLAY_SETTINGS_FILE = join(homedir(), CONFIG_DIR_NAME, "agent", "todo-write-overlay.json");
+const DEFAULT_MAX_VISIBLE_TASKS = 8;
 let todoOverlayDisplayMode: TodoOverlayDisplayMode = "full";
 let todoOverlayTitle: string | undefined = "TODO";
+let todoOverlayMaxVisibleTasks = DEFAULT_MAX_VISIBLE_TASKS;
 function createEmptyState(): TodoState {
 	return { tasks: [] };
 }
@@ -121,15 +130,22 @@ function isTodoOverlayDisplayMode(value: unknown): value is TodoOverlayDisplayMo
 	return value === "full" || value === "compact";
 }
 
+function isMaxVisibleTasks(value: unknown): value is number {
+	return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
 async function loadTodoOverlaySettings(): Promise<TodoOverlaySettings> {
 	try {
 		const settings = JSON.parse(await readFile(TODO_OVERLAY_SETTINGS_FILE, "utf8")) as Partial<TodoOverlaySettings>;
 		return {
 			displayMode: isTodoOverlayDisplayMode(settings.displayMode) ? settings.displayMode : "full",
 			title: typeof settings.title === "string" && settings.title.trim() ? settings.title : undefined,
+			maxVisibleTasks: isMaxVisibleTasks(settings.maxVisibleTasks)
+				? settings.maxVisibleTasks
+				: DEFAULT_MAX_VISIBLE_TASKS,
 		};
 	} catch (error) {
-		const settings = { displayMode: "full" as const, title: "TODO" };
+		const settings = { displayMode: "full" as const, title: "TODO", maxVisibleTasks: DEFAULT_MAX_VISIBLE_TASKS };
 		if (typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT") {
 			await persistTodoOverlayDisplayMode(settings.displayMode);
 		}
@@ -142,6 +158,7 @@ async function persistTodoOverlayDisplayMode(displayMode: TodoOverlayDisplayMode
 	const settings: TodoOverlaySettings = {
 		displayMode,
 		...(todoOverlayTitle === undefined ? {} : { title: todoOverlayTitle }),
+		maxVisibleTasks: todoOverlayMaxVisibleTasks,
 	};
 	await writeFile(TODO_OVERLAY_SETTINGS_FILE, `${JSON.stringify(settings, null, "\t")}\n`, "utf8");
 }
@@ -158,6 +175,34 @@ async function setTodoOverlayDisplayMode(displayMode: TodoOverlayDisplayMode): P
 	}
 }
 
+async function setTodoOverlayMaxVisibleTasks(maxVisibleTasks: number): Promise<void> {
+	const previous = todoOverlayMaxVisibleTasks;
+	todoOverlayMaxVisibleTasks = maxVisibleTasks;
+	try {
+		await persistTodoOverlayDisplayMode(todoOverlayDisplayMode);
+	} catch (error) {
+		todoOverlayMaxVisibleTasks = previous;
+		throw error;
+	}
+	for (const record of todoOverlayStore.values()) {
+		record.component?.invalidate();
+	}
+}
+
+async function setTodoOverlayTitle(title: string | undefined): Promise<void> {
+	const previous = todoOverlayTitle;
+	todoOverlayTitle = title;
+	try {
+		await persistTodoOverlayDisplayMode(todoOverlayDisplayMode);
+	} catch (error) {
+		todoOverlayTitle = previous;
+		throw error;
+	}
+	for (const record of todoOverlayStore.values()) {
+		record.component?.invalidate();
+	}
+}
+
 function getTodoStateKey(ctx: Pick<ExtensionContext, "cwd" | "sessionManager">): string {
 	const sessionFile = ctx.sessionManager.getSessionFile?.();
 	return sessionFile ? `session:${sessionFile}` : `cwd:${ctx.cwd}`;
@@ -169,6 +214,27 @@ function cloneTasks(tasks: TodoTask[]): TodoTask[] {
 
 function cloneState(state: TodoState): TodoState {
 	return { tasks: cloneTasks(state.tasks) };
+}
+
+export function planTodoOverlayRows(
+	state: TodoState,
+	maxVisibleTasks = DEFAULT_MAX_VISIBLE_TASKS,
+): TodoOverlayRow[] {
+	const limit = Math.max(1, Math.floor(maxVisibleTasks));
+	if (state.tasks.length <= limit) return state.tasks.map((task) => ({ kind: "task", task }));
+
+	const active = state.tasks.find((task) => task.status === "in_progress");
+	const pending = state.tasks.filter((task) => task.status === "pending");
+	const completedCount = state.tasks.filter((task) => task.status === "completed").length;
+	const hasRemainingTasks = active !== undefined || pending.length > 0;
+	const summaryVisible = completedCount > 0 && (!hasRemainingTasks || limit > 1);
+	const taskLimit = limit - (summaryVisible ? 1 : 0);
+	const prioritized = [...(active ? [active] : []), ...pending].slice(0, taskLimit);
+
+	return [
+		...(summaryVisible ? [{ kind: "completed-summary" as const, count: completedCount }] : []),
+		...prioritized.map((task) => ({ kind: "task" as const, task })),
+	];
 }
 
 function normalizeInProgressTask(tasks: TodoTask[]): void {
@@ -474,12 +540,52 @@ function setTodoOverlayAgentRunning(ctx: Pick<ExtensionContext, "cwd" | "session
 	todoOverlayAgentRunningStore.set(key, running);
 }
 
-export type TodoOverlayCommandAction = "full" | "compact" | "hide" | "hide-once" | "status" | "invalid";
+export type TodoOverlayCommandAction =
+	| "full"
+	| "compact"
+	| "hide"
+	| "hide-once"
+	| "max-visible"
+	| "title"
+	| "status"
+	| "invalid";
+
+export function parseMaxVisibleTasksCommand(args: string): number | undefined {
+	const match = /^max-visible\s+([1-9]\d*)$/i.exec(args.trim());
+	if (!match?.[1]) return undefined;
+	const maxVisibleTasks = Number(match[1]);
+	return isMaxVisibleTasks(maxVisibleTasks) ? maxVisibleTasks : undefined;
+}
+
+export type TodoOverlayTitleCommand = { title: string | undefined };
+
+export function parseTodoOverlayTitleCommand(args: string): TodoOverlayTitleCommand | undefined {
+	const match = /^title\s+(.+)$/i.exec(args.trim());
+	const value = match?.[1]?.trim();
+	if (!value) return undefined;
+	if (value.startsWith("\"") || value.endsWith("\"")) {
+		try {
+			const title = JSON.parse(value);
+			if (typeof title !== "string") return undefined;
+			return { title: title.trim() || undefined };
+		} catch {
+			return undefined;
+		}
+	}
+	if (value.startsWith("'") || value.endsWith("'")) {
+		if (!value.startsWith("'") || !value.endsWith("'")) return undefined;
+		const title = value.slice(1, -1).replace(/\\(['\\])/g, "$1").trim();
+		return { title: title || undefined };
+	}
+	return { title: value };
+}
 
 export function parseTodoOverlayCommand(args: string): TodoOverlayCommandAction {
 	const action = args.trim().toLowerCase();
 	if (action === "") return "status";
 	if (action === "full" || action === "compact" || action === "hide" || action === "hide-once") return action;
+	if (parseMaxVisibleTasksCommand(args) !== undefined) return "max-visible";
+	if (parseTodoOverlayTitleCommand(args) !== undefined) return "title";
 	return "invalid";
 }
 
@@ -583,7 +689,7 @@ class TodoOverlayComponent {
 		const totalCount = this.state.tasks.length;
 		const progress = totalCount === 0 ? "0/0" : `${doneCount}/${totalCount}`;
 		const progressText = this.theme.fg("dim", ` ${progress} done `);
-		const title = todoOverlayTitle ? this.theme.fg("dim", this.theme.bold(` ${todoOverlayTitle} `)) : "";
+		const title = todoOverlayTitle ? this.theme.fg("accent", this.theme.bold(` ${todoOverlayTitle} `)) : "";
 		const titleWidth = visibleWidth(title) + visibleWidth(progressText);
 		const titlePad = Math.max(0, innerWidth - titleWidth);
 		const lines = [`${border("╭")}${title}${border("─".repeat(titlePad))}${progressText}${border("╮")}`];
@@ -591,8 +697,12 @@ class TodoOverlayComponent {
 		if (this.state.tasks.length === 0) {
 			lines.push(row(` ${this.theme.fg("dim", "No tasks")}`));
 		} else {
-			for (const task of this.state.tasks) {
-				lines.push(row(this.renderTaskLine(task)));
+			for (const rowItem of planTodoOverlayRows(this.state, todoOverlayMaxVisibleTasks)) {
+				const content =
+					rowItem.kind === "task"
+						? this.renderTaskLine(rowItem.task)
+						: ` ${this.theme.fg("success", "✓")} ${this.theme.fg("dim", `${rowItem.count} completed`)}`;
+				lines.push(row(content));
 			}
 		}
 
@@ -656,15 +766,38 @@ function showOrUpdateTodoOverlay(ctx: ExtensionContext, key: string, state: Todo
 		record.component.setAgentRunning(agentRunning);
 		return;
 	}
-	if (record?.opening) return;
+	if (record?.opening) {
+		todoOverlayStore.set(key, {
+			...record,
+			pendingState: cloneState(state),
+			pendingAgentRunning: agentRunning,
+		});
+		return;
+	}
 
-	todoOverlayStore.set(key, { opening: true });
-	const initialState = cloneState(state);
+	todoOverlayStore.set(key, {
+		opening: true,
+		pendingState: cloneState(state),
+		pendingAgentRunning: agentRunning,
+	});
 	const overlayPromise = ctx.ui.custom<void>(
 		(tui, theme, _keybindings, done) => {
-			const component = new TodoOverlayComponent(tui, theme, initialState, agentRunning, todoOverlayDisplayMode);
 			const current = todoOverlayStore.get(key) ?? { opening: false };
-			todoOverlayStore.set(key, { ...current, opening: false, component, close: done });
+			const component = new TodoOverlayComponent(
+				tui,
+				theme,
+				current.pendingState ?? state,
+				current.pendingAgentRunning ?? agentRunning,
+				todoOverlayDisplayMode,
+			);
+			todoOverlayStore.set(key, {
+				...current,
+				opening: false,
+				pendingState: undefined,
+				pendingAgentRunning: undefined,
+				component,
+				close: done,
+			});
 			return component;
 		},
 		{
@@ -730,10 +863,13 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 	const settings = await loadTodoOverlaySettings();
 	todoOverlayDisplayMode = settings.displayMode;
 	todoOverlayTitle = settings.title;
+	todoOverlayMaxVisibleTasks = settings.maxVisibleTasks;
 	pi.registerCommand("todo-overlay", {
-		description: "Set the todo overlay display. Usage: /todo-overlay full|compact|hide|hide-once",
+		description: "Set the todo overlay display. Usage: /todo-overlay full|compact|hide|hide-once|max-visible <positive integer>|title <text>",
 		getArgumentCompletions(prefix: string) {
-			const filtered = ["full", "compact", "hide", "hide-once"].filter((value) => value.startsWith(prefix.trim().toLowerCase()));
+			const filtered = ["full", "compact", "hide", "hide-once", "max-visible", "title"].filter((value) =>
+				value.startsWith(prefix.trim().toLowerCase()),
+			);
 			return filtered.length > 0 ? filtered.map((value) => ({ value, label: value })) : null;
 		},
 		async handler(args, ctx) {
@@ -741,7 +877,10 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 			const action = parseTodoOverlayCommand(args);
 
 			if (action === "invalid") {
-				ctx.ui.notify("Usage: /todo-overlay full, compact, hide, or hide-once", "warning");
+				ctx.ui.notify(
+					"Usage: /todo-overlay full, compact, hide, hide-once, max-visible <positive integer>, or title <text>",
+					"warning",
+				);
 				return;
 			}
 
@@ -759,6 +898,40 @@ export default async function todoWriteOverlayExtension(pi: ExtensionAPI): Promi
 					ctx.ui.notify(`TODO overlay mode: ${action}`, "info");
 				} catch (error) {
 					ctx.ui.notify(`Could not save TODO overlay mode: ${error instanceof Error ? error.message : String(error)}`, "error");
+				}
+				return;
+			}
+
+			if (action === "max-visible") {
+				const maxVisibleTasks = parseMaxVisibleTasksCommand(args);
+				if (maxVisibleTasks === undefined) return;
+				try {
+					await setTodoOverlayMaxVisibleTasks(maxVisibleTasks);
+					await syncTodoOverlay(ctx, pi);
+					ctx.ui.notify(`TODO overlay maximum visible tasks: ${maxVisibleTasks}`, "info");
+				} catch (error) {
+					ctx.ui.notify(
+						`Could not save TODO overlay maximum visible tasks: ${error instanceof Error ? error.message : String(error)}`,
+						"error",
+					);
+				}
+				return;
+			}
+
+			if (action === "title") {
+				const titleCommand = parseTodoOverlayTitleCommand(args);
+				if (titleCommand === undefined) return;
+				try {
+					await setTodoOverlayTitle(titleCommand.title);
+					ctx.ui.notify(
+						titleCommand.title === undefined ? "TODO overlay title cleared" : `TODO overlay title: ${titleCommand.title}`,
+						"info",
+					);
+				} catch (error) {
+					ctx.ui.notify(
+						`Could not save TODO overlay title: ${error instanceof Error ? error.message : String(error)}`,
+						"error",
+					);
 				}
 				return;
 			}
