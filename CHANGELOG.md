@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Documentation
+
+- Added contributor, agent workflow, and roadmap documentation.
+- Added a GitHub Actions CI workflow for tests and type checking.
 ## [0.3.7] - 2026-09-09
 
 ### Added

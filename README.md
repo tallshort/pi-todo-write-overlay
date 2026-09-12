@@ -75,9 +75,11 @@ npm test
 npm run typecheck
 npm run build
 ```
-
 `build` is a type-check because pi loads the TypeScript extension source directly.
 
+## Contributing
+
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, change, and verification guidance. Repository-specific instructions for coding agents are in [AGENTS.md](./AGENTS.md); planned work is tracked in [TODO.md](./TODO.md).
 ## License and attribution
 
 MIT. Copyright (c) 2026 Jonghakseo and tallshort.
