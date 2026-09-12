@@ -153,7 +153,7 @@ describe("todo-write-overlay helpers", () => {
 			{ content: "Completed 2", status: "completed" },
 			{ content: "Completed 3", status: "completed" },
 			{ content: "Completed 4", status: "completed" },
-			{ content: "Active", status: "in_progress", notes: "Run focused tests first" },
+			{ content: "Active", status: "in_progress", notes: "Run focused\n tests first" },
 			{ content: "Pending 1", status: "pending" },
 			{ content: "Pending 2", status: "pending" },
 			{ content: "Pending 3", status: "pending" },
@@ -280,5 +280,60 @@ describe("todo-write-overlay helpers", () => {
 		);
 		const rendered = component.render(42).join("\n");
 		expect(rendered).toContain("Updated while opening");
+	});
+
+	it("does not recreate an overlay when tasks are cleared while it is opening", async () => {
+		type OverlayFactory = (
+			tui: { requestRender(): void },
+			theme: {
+				fg(_color: string, text: string): string;
+				bold(text: string): string;
+				strikethrough(text: string): string;
+			},
+			keybindings: unknown,
+			done: () => void,
+		) => { render(width: number): string[] };
+		type RegisteredTodoTool = { execute(...args: unknown[]): Promise<unknown> };
+
+		let createOverlay: OverlayFactory | undefined;
+		let todoTool: RegisteredTodoTool | undefined;
+		const pi = {
+			appendEntry: () => {},
+			registerCommand: () => {},
+			registerShortcut: () => {},
+			registerTool: (tool: unknown) => {
+				todoTool = tool as RegisteredTodoTool;
+			},
+			on: () => {},
+		} as unknown as ExtensionAPI;
+		const ctx = {
+			cwd: "/tmp/overlay-opening-clear",
+			hasUI: true,
+			sessionManager: { getSessionFile: () => "/tmp/overlay-opening-clear/session.json" },
+			ui: {
+				custom: (factory: unknown) => {
+					createOverlay = factory as OverlayFactory;
+					return new Promise<void>(() => {});
+				},
+			},
+		} as unknown as ExtensionContext;
+
+		await todoWriteOverlayExtension(pi);
+		if (!todoTool) throw new Error("todo_write was not registered");
+		await todoTool.execute("first", { todos: [{ content: "Initial", status: "in_progress" }] }, undefined, undefined, ctx);
+		await todoTool.execute("second", { todos: [] }, undefined, undefined, ctx);
+		if (!createOverlay) throw new Error("overlay factory was not registered");
+
+		let closed = false;
+		const component = createOverlay(
+			{ requestRender: () => {} },
+			{ fg: (_color, text) => text, bold: (text) => text, strikethrough: (text) => text },
+			undefined,
+			() => {
+				closed = true;
+			},
+		);
+		expect(closed).toBe(true);
+		expect(component.render(42).join("\n")).not.toContain("Initial");
 	});
 });

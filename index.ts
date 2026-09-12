@@ -35,6 +35,7 @@ export type TodoOverlayRow =
 
 type TodoOverlayRecord = {
 	opening: boolean;
+	openingId?: symbol;
 	pendingState?: TodoState;
 	pendingAgentRunning?: boolean;
 	component?: TodoOverlayComponent;
@@ -223,7 +224,7 @@ export function planTodoOverlayRows(
 ): TodoOverlayRow[] {
 	const limit = Math.max(1, Math.floor(maxVisibleTasks));
 	const active = state.tasks.find((task) => task.status === "in_progress");
-	const activeNote = active?.notes?.trim();
+	const activeNote = active?.notes?.trim().replace(/\s+/g, " ");
 	const pending = state.tasks.filter((task) => task.status === "pending");
 	const completedCount = state.tasks.filter((task) => task.status === "completed").length;
 	const needsFolding = state.tasks.length + (activeNote ? 1 : 0) > limit;
@@ -701,7 +702,9 @@ class TodoOverlayComponent {
 		const totalCount = this.state.tasks.length;
 		const progress = totalCount === 0 ? "0/0" : `${doneCount}/${totalCount}`;
 		const progressText = this.theme.fg("dim", ` ${progress} done `);
-		const title = todoOverlayTitle ? this.theme.fg("accent", this.theme.bold(` ${todoOverlayTitle} `)) : "";
+		const titleText = todoOverlayTitle ? ` ${todoOverlayTitle} ` : "";
+		const maxTitleWidth = Math.max(0, innerWidth - visibleWidth(progressText));
+		const title = titleText ? this.renderOverlayTitle(titleText, maxTitleWidth) : "";
 		const titleWidth = visibleWidth(title) + visibleWidth(progressText);
 		const titlePad = Math.max(0, innerWidth - titleWidth);
 		const lines = [`${border("╭")}${title}${border("─".repeat(titlePad))}${progressText}${border("╮")}`];
@@ -733,6 +736,16 @@ class TodoOverlayComponent {
 			.replace(/\x1b\[0m$/, "")
 			.trimEnd();
 		return `   ${this.theme.fg("dim", clipped)}${this.theme.fg("dim", ellipsis)}`;
+	}
+
+	private renderOverlayTitle(title: string, maxWidth: number): string {
+		if (visibleWidth(title) <= maxWidth) return this.theme.fg("accent", this.theme.bold(title));
+
+		const ellipsis = truncateToWidth("...", maxWidth, "", false).replace(/\x1b\[0m$/, "");
+		const clipped = truncateToWidth(title, Math.max(0, maxWidth - visibleWidth(ellipsis)), "", false)
+			.replace(/\x1b\[0m$/, "")
+			.trimEnd();
+		return `${this.theme.fg("accent", this.theme.bold(clipped))}${this.theme.fg("accent", this.theme.bold(ellipsis))}`;
 	}
 
 	private renderCompactLine(): string {
@@ -800,14 +813,21 @@ function showOrUpdateTodoOverlay(ctx: ExtensionContext, key: string, state: Todo
 		return;
 	}
 
+	const openingId = Symbol("todo-overlay-opening");
 	todoOverlayStore.set(key, {
 		opening: true,
+		openingId,
 		pendingState: cloneState(state),
 		pendingAgentRunning: agentRunning,
 	});
 	const overlayPromise = ctx.ui.custom<void>(
 		(tui, theme, _keybindings, done) => {
-			const current = todoOverlayStore.get(key) ?? { opening: false };
+			const current = todoOverlayStore.get(key);
+			if (!current || current.openingId !== openingId) {
+				const component = new TodoOverlayComponent(tui, theme, createEmptyState(), false, todoOverlayDisplayMode);
+				done();
+				return component;
+			}
 			const component = new TodoOverlayComponent(
 				tui,
 				theme,
@@ -836,7 +856,11 @@ function showOrUpdateTodoOverlay(ctx: ExtensionContext, key: string, state: Todo
 				visible: (termWidth) => termWidth >= 70,
 			},
 			onHandle: (handle) => {
-				const current = todoOverlayStore.get(key) ?? { opening: false };
+				const current = todoOverlayStore.get(key);
+				if (current?.openingId !== openingId) {
+					handle.hide();
+					return;
+				}
 				todoOverlayStore.set(key, { ...current, handle });
 			},
 		},
@@ -844,7 +868,8 @@ function showOrUpdateTodoOverlay(ctx: ExtensionContext, key: string, state: Todo
 	void overlayPromise
 		.finally(() => {
 			const current = todoOverlayStore.get(key);
-			current?.component?.dispose();
+			if (current?.openingId !== openingId) return;
+			current.component?.dispose();
 			todoOverlayStore.delete(key);
 		})
 		.catch(() => {});

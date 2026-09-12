@@ -1,6 +1,6 @@
 {
   "name": "@tallshort/pi-todo-write-overlay",
-  "version": "0.3.7",
+  "version": "0.4.0",
   "description": "Persistent top-right todo_write overlay for Pi, with full and compact modes.",
   "license": "MIT",
   "repository": {
@@ -22,6 +22,9 @@
     "index.ts",
     "README.md",
     "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "TODO.md",
+    "AGENTS.md",
     "LICENSE",
     "assets/todo-overlay-progress.png",
     "assets/todo-overlay-progress-compact.png"

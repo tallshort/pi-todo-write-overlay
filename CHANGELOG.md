@@ -2,12 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## [0.4.0] - 2026-09-12
 
 ### Fixed
 
 - Preserved the latest task and agent state when the overlay finishes opening after a `todo_write` update.
 - Kept ellipses added when truncating active-task notes contiguous with the final character and inside the dim note style.
+- Prevented long overlay titles from overflowing the frame or losing their accent-coloured ellipsis, opening overlays from reappearing after a clear, and multiline notes from exceeding the display-row budget.
 
 ### Changed
 
@@ -16,6 +17,8 @@ All notable changes to this project are documented in this file.
 - Added `/todo-overlay title <text>` for changing the persisted overlay title from the TUI; quoted values are parsed and `title ""` clears it.
 - Rendered non-empty overlay titles with the active theme accent colour.
 - Rendered the active task's notes as a dim, indented full-mode row when the display-row budget permits.
+- Published the contributor, roadmap, and agent-workflow documents linked from the README.
+
 ### Documentation
 - Added contributor, agent workflow, and roadmap documentation.
 - Added a GitHub Actions CI workflow for tests and type checking.
