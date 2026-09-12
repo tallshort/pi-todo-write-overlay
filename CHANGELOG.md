@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Documentation
+- Replace the Pi package Gallery preview with a hand-drawn task-state illustration.
+
 ## [0.4.0] - 2026-09-12
 
 ### Fixed

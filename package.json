@@ -27,7 +27,8 @@
     "AGENTS.md",
     "LICENSE",
     "assets/todo-overlay-progress.png",
-    "assets/todo-overlay-progress-compact.png"
+    "assets/todo-overlay-progress-compact.png",
+    "assets/gallery-preview.png"
   ],
   "scripts": {
     "build": "npm run typecheck",
@@ -38,7 +39,7 @@
     "extensions": [
       "./index.ts"
     ],
-    "image": "https://raw.githubusercontent.com/tallshort/pi-todo-write-overlay/main/assets/todo-overlay-progress.png"
+    "image": "https://raw.githubusercontent.com/tallshort/pi-todo-write-overlay/main/assets/gallery-preview.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
